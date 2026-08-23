@@ -1,0 +1,189 @@
+@import 'tailwindcss';
+@import 'leaflet/dist/leaflet.css';
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-300: #5eead4;
+  --color-brand-400: #2dd4bf;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+  --color-brand-900: #134e4a;
+  --shadow-panel: 0 1px 2px rgb(15 23 42 / 0.06), 0 8px 24px -12px rgb(15 23 42 / 0.18);
+  --radius-xl2: 14px;
+}
+
+:root {
+  color-scheme: light;
+  --app-bg: #f1f5f9;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--app-bg);
+  color: var(--color-slate-800);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior: none;
+}
+
+/* ---------------------------------------------------------------- scrollbars */
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-slate-300) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--color-slate-300);
+  border-radius: 9999px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* -------------------------------------------------------------------- leaflet */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: #e8eef3;
+  font-family: var(--font-sans);
+  z-index: 0;
+}
+.leaflet-control-attribution {
+  font-size: 10px;
+  background: rgb(255 255 255 / 0.85);
+}
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: var(--shadow-panel);
+}
+.leaflet-popup-content {
+  margin: 12px 14px;
+  min-width: 190px;
+}
+.leaflet-bar a {
+  color: var(--color-slate-700);
+}
+
+/* Custom marker: a rounded pin with an emoji and an optional order badge. */
+.utp-marker {
+  background: transparent;
+  border: 0;
+}
+.utp-pin {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50% 50% 50% 6px;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 6px rgb(15 23 42 / 0.35);
+  border: 2px solid #fff;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.utp-pin > span {
+  transform: rotate(45deg);
+  font-size: 14px;
+  line-height: 1;
+}
+.utp-pin.is-active {
+  transform: rotate(-45deg) scale(1.22);
+  box-shadow: 0 4px 12px rgb(15 23 42 / 0.45);
+  z-index: 900;
+}
+.utp-pin.is-dim {
+  opacity: 0.45;
+}
+.utp-badge {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: #0f172a;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  transform: rotate(45deg);
+  border: 2px solid #fff;
+}
+.utp-area-label {
+  background: rgb(255 255 255 / 0.92);
+  border: 1px solid var(--color-slate-200);
+  border-radius: 8px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-slate-700);
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 0.15);
+}
+
+/* ------------------------------------------------------------------ dnd bits */
+.dnd-ghost {
+  opacity: 0.35;
+}
+.dnd-overlay {
+  cursor: grabbing;
+  transform: rotate(1.5deg);
+}
+
+/* --------------------------------------------------------------- animations */
+@keyframes utp-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-rise {
+  animation: utp-rise 180ms ease-out;
+}
+@keyframes utp-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-fade {
+  animation: utp-fade 140ms ease-out;
+}
+
+/* ------------------------------------------------------------------ utility */
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+}
+
+input[type='time']::-webkit-calendar-picker-indicator {
+  opacity: 0.4;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+}
