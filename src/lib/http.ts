@@ -49,6 +49,9 @@ export async function fetchJson<T>(url: string, options: FetchOptions = {}): Pro
         if (response.status >= 500) {
           throw new HttpError(`The service is temporarily unavailable (${response.status}).`, response.status, url)
         }
+        if (response.status === 400) {
+          throw new HttpError('The search service rejected that request. Try a simpler search term.', 400, url)
+        }
         throw new HttpError(`Request failed with status ${response.status}.`, response.status, url)
       }
       return (await response.json()) as T

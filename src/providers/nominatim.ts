@@ -1,7 +1,7 @@
 import type { Geometry } from 'geojson'
 import { cached, DAY_MS } from '../lib/cache'
 import { geometrySize } from '../lib/geo'
-import { fetchJson } from '../lib/http'
+import { fetchJson, HttpError } from '../lib/http'
 import { RateLimitedQueue } from '../lib/queue'
 import { hashKey } from '../lib/text'
 import type { BoundingBox, PlaceSource } from '../types'
@@ -139,6 +139,34 @@ function toResult(place: NominatimPlace, retrievedAt: string): GeocodeResult | n
   }
 }
 
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+
+/**
+ * Smallest rectangle we are willing to send, in degrees (~33 km).
+ * A single saved place yields a zero-area box, which Nominatim rejects with
+ * `400 Bad Request`, so degenerate boxes are widened into a real rectangle.
+ */
+const MIN_VIEWBOX_SPAN = 0.3
+
+function viewboxParam(box: BoundingBox): string | null {
+  let south = Math.min(box.south, box.north)
+  let north = Math.max(box.south, box.north)
+  let west = Math.min(box.west, box.east)
+  let east = Math.max(box.west, box.east)
+  if (![south, north, west, east].every(Number.isFinite)) return null
+
+  const latPad = Math.max(0, MIN_VIEWBOX_SPAN - (north - south)) / 2
+  const lonPad = Math.max(0, MIN_VIEWBOX_SPAN - (east - west)) / 2
+  south = clamp(south - latPad, -85, 85)
+  north = clamp(north + latPad, -85, 85)
+  west = clamp(west - lonPad, -180, 180)
+  east = clamp(east + lonPad, -180, 180)
+  if (north - south <= 0 || east - west <= 0) return null
+
+  // Nominatim wants left,top,right,bottom.
+  return `${west.toFixed(5)},${north.toFixed(5)},${east.toFixed(5)},${south.toFixed(5)}`
+}
+
 export class NominatimProvider implements GeocodingProvider {
   readonly id = 'nominatim'
   readonly name = 'Nominatim (OpenStreetMap)'
@@ -165,19 +193,35 @@ export class NominatimProvider implements GeocodingProvider {
       limit: String(Math.min(query.limit ?? 8, 20)),
       'accept-language': query.language ?? 'en',
     })
-    if (query.viewbox) {
-      const { west, north, east, south } = query.viewbox
-      params.set('viewbox', `${west},${north},${east},${south}`)
+    if (query.countryCodes?.length) params.set('countrycodes', query.countryCodes.join(',').toLowerCase())
+
+    const viewbox = query.viewbox ? viewboxParam(query.viewbox) : null
+    if (viewbox) {
+      params.set('viewbox', viewbox)
       // Soft bias only: results outside the box are still returned.
       params.set('bounded', '0')
     }
-    if (query.countryCodes?.length) params.set('countrycodes', query.countryCodes.join(',').toLowerCase())
 
+    try {
+      return await this.runSearch(params, query.signal)
+    } catch (error) {
+      // The location bias is a nicety, never a reason to fail in the user's
+      // face: if the service rejects the request, retry it unbiased once.
+      if (viewbox && error instanceof HttpError && error.status === 400) {
+        params.delete('viewbox')
+        params.delete('bounded')
+        return await this.runSearch(params, query.signal)
+      }
+      throw error
+    }
+  }
+
+  private async runSearch(params: URLSearchParams, signal?: AbortSignal): Promise<GeocodeResult[]> {
     const url = `${ENDPOINT}/search?${params.toString()}`
     const key = `nominatim:search:${hashKey(url)}`
 
     const raw = await cached(key, CACHE_TTL, () =>
-      this.queue.add(() => fetchJson<NominatimPlace[]>(url, { signal: query.signal, timeoutMs: 20000 })),
+      this.queue.add(() => fetchJson<NominatimPlace[]>(url, { signal, timeoutMs: 20000 })),
     )
 
     const retrievedAt = new Date().toISOString()
