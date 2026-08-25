@@ -9,3 +9,4 @@ dist-ssr
 .env.*
 tests/*.png
 tests/print.html
+universal-trip-planner.html
